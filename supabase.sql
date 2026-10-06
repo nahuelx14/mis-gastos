@@ -6,16 +6,14 @@
 create table if not exists public.gastos (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  tipo        text not null default 'gasto',   -- 'gasto' o 'ingreso'
   fecha       date not null default current_date,
   descripcion text not null,
-  categoria   text not null check (categoria in (
-                'comida', 'transporte', 'servicios', 'salidas',
-                'tarjeta_credito', 'credito_mp'
-              )),
+  categoria   text not null,
   medio_pago  text,
   moneda      text not null default 'ARS' check (moneda in ('ARS', 'USD')),
   monto       numeric(14, 2) not null check (monto > 0),
-  -- Pesos pagados por cada dólar. Obligatoria si moneda = USD, vacía si ARS.
+  -- Pesos por cada dólar. Obligatoria si moneda = USD, vacía si ARS.
   cotizacion  numeric(14, 2),
   nota        text,
   created_at  timestamptz not null default now(),
@@ -25,6 +23,20 @@ create table if not exists public.gastos (
     or (moneda = 'ARS' and cotizacion is null)
   )
 );
+
+-- Columnas / reglas agregadas después (se pueden correr sobre una tabla existente)
+alter table public.gastos add column if not exists tipo text not null default 'gasto';
+
+alter table public.gastos drop constraint if exists gastos_tipo_check;
+alter table public.gastos add constraint gastos_tipo_check check (tipo in ('gasto', 'ingreso'));
+
+alter table public.gastos drop constraint if exists gastos_categoria_check;
+alter table public.gastos add constraint gastos_categoria_check check (categoria in (
+  -- gastos
+  'comida', 'transporte', 'servicios', 'salidas', 'tarjeta_credito', 'credito_mp',
+  -- ingresos
+  'sueldo', 'extras', 'otros_ingresos'
+));
 
 create index if not exists gastos_user_fecha_idx on public.gastos (user_id, fecha desc);
 

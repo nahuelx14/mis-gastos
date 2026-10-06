@@ -2,13 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0f17">
   <title>Mis Gastos</title>
+
+  <!-- Instalable como app (iPhone y Android) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mis Gastos">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,9 +28,9 @@
   <section id="login-view" class="login" hidden>
     <form id="login-form" class="card login-card">
       <div class="brand"><span class="logo">💸</span><h1>Mis Gastos</h1></div>
-      <p class="muted">Ingresá para ver y cargar tus gastos</p>
+      <p class="muted">Ingresá para ver y cargar tus movimientos</p>
       <label class="field"><span class="label">Email</span>
-        <input type="email" id="login-email" required autocomplete="email">
+        <input type="email" id="login-email" required autocomplete="email" autocapitalize="off">
       </label>
       <label class="field"><span class="label">Contraseña</span>
         <input type="password" id="login-password" required minlength="6" autocomplete="current-password">
@@ -47,31 +57,31 @@
 
     <main class="container">
       <div id="demo-notice" class="notice" hidden>
-        <strong>Modo demo:</strong> los gastos se guardan solo en este navegador.
+        <strong>Modo demo:</strong> los datos se guardan solo en este navegador.
         Para guardarlos en la nube completá <code>config.js</code> con los datos de Supabase (ver README).
       </div>
 
       <!-- Resumen -->
       <section class="stats">
-        <div class="card stat">
-          <span class="stat-label">Total gastado (en pesos)</span>
-          <span class="stat-value" id="stat-total">—</span>
-          <span class="stat-sub" id="stat-total-sub"></span>
+        <div class="card stat ingreso">
+          <span class="stat-label">Ingresos</span>
+          <span class="stat-value" id="stat-ing">—</span>
+          <span class="stat-sub" id="stat-ing-sub"></span>
+        </div>
+        <div class="card stat gasto">
+          <span class="stat-label">Gastos</span>
+          <span class="stat-value" id="stat-gas">—</span>
+          <span class="stat-sub" id="stat-gas-sub"></span>
+        </div>
+        <div class="card stat" id="stat-bal-card">
+          <span class="stat-label">Balance (te queda)</span>
+          <span class="stat-value" id="stat-bal">—</span>
+          <span class="stat-sub" id="stat-bal-sub"></span>
         </div>
         <div class="card stat usd">
-          <span class="stat-label">Pagado en dólares</span>
+          <span class="stat-label">Gastos pagados en USD</span>
           <span class="stat-value" id="stat-usd">—</span>
           <span class="stat-sub" id="stat-usd-sub"></span>
-        </div>
-        <div class="card stat">
-          <span class="stat-label">Cantidad de gastos</span>
-          <span class="stat-value" id="stat-count">—</span>
-          <span class="stat-sub" id="stat-count-sub"></span>
-        </div>
-        <div class="card stat">
-          <span class="stat-label">Categoría principal</span>
-          <span class="stat-value" id="stat-top">—</span>
-          <span class="stat-sub" id="stat-top-sub"></span>
         </div>
       </section>
 
@@ -80,6 +90,10 @@
         <form id="expense-form" class="card form" autocomplete="off">
           <div class="card-head">
             <h2 id="form-title">Nuevo gasto</h2>
+            <div class="segmented tipo" role="radiogroup" aria-label="Tipo de movimiento">
+              <input type="radio" name="tipo" id="t-gasto" value="gasto" checked><label for="t-gasto">Gasto</label>
+              <input type="radio" name="tipo" id="t-ingreso" value="ingreso"><label for="t-ingreso">Ingreso</label>
+            </div>
           </div>
 
           <div class="form-grid">
@@ -110,7 +124,7 @@
             </div>
 
             <div id="usd-box" class="usd-box span-2" hidden>
-              <label class="field"><span class="label">Cotización del dólar pagada (pesos por 1 USD)</span>
+              <label class="field"><span class="label" id="cot-label">Cotización del dólar pagada (pesos por 1 USD)</span>
                 <div class="input-prefix">
                   <span>$</span>
                   <input type="number" id="in-cotizacion" step="0.01" min="0.01" inputmode="decimal" placeholder="Ej: 1450">
@@ -118,10 +132,10 @@
               </label>
               <div class="dolar-chips" id="dolar-chips"><span class="hint">Cargando cotizaciones…</span></div>
               <div class="equivalente" id="equivalente"></div>
-              <p class="hint">Los botones cargan la cotización de hoy (venta). Si el gasto es de otro día, ajustala a mano.</p>
+              <p class="hint">Los botones cargan la cotización de hoy. Si es de otro día, ajustala a mano.</p>
             </div>
 
-            <label class="field"><span class="label">Medio de pago</span>
+            <label class="field"><span class="label" id="medio-label">Medio de pago</span>
               <select id="in-medio"></select>
             </label>
 
@@ -138,7 +152,7 @@
 
         <!-- Gráfico por categoría -->
         <div class="card chart-card">
-          <div class="card-head"><h2 id="chart-cat-title">Por categoría</h2></div>
+          <div class="card-head"><h2 id="chart-cat-title">Gastos por categoría</h2></div>
           <div class="chart-wrap">
             <canvas id="chart-cat"></canvas>
             <div class="chart-empty" id="chart-cat-empty" hidden>Todavía no hay gastos en este período</div>
@@ -148,7 +162,10 @@
 
       <!-- Gráfico mensual -->
       <section class="card chart-card">
-        <div class="card-head"><h2>Últimos 12 meses</h2><span class="muted small">en pesos (USD convertidos a la cotización pagada)</span></div>
+        <div class="card-head wrap">
+          <h2>Últimos 12 meses</h2>
+          <span class="muted small">Barras: gastos por categoría · Línea: ingresos (en pesos)</span>
+        </div>
         <div class="chart-wrap tall"><canvas id="chart-month"></canvas></div>
       </section>
 
@@ -161,6 +178,11 @@
           </div>
           <div class="filters">
             <input type="search" id="f-search" placeholder="Buscar…">
+            <select id="f-tipo">
+              <option value="">Gastos e ingresos</option>
+              <option value="gasto">Solo gastos</option>
+              <option value="ingreso">Solo ingresos</option>
+            </select>
             <select id="f-cat"><option value="">Todas las categorías</option></select>
             <select id="f-moneda">
               <option value="">ARS y USD</option>
